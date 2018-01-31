@@ -30,11 +30,9 @@ const (
 )
 
 type Client struct {
-	client          *hchttp.Client
-	debug           bool
-	baseUrl         string
-	addressToSymbol map[string]string
-	symbolToAddress map[string]string
+	client  *hchttp.Client
+	debug   bool
+	baseUrl string
 }
 
 func (r *Response) populateRate() {
