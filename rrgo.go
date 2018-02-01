@@ -2,6 +2,7 @@ package rrgo
 
 import (
 	"bytes"
+
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -18,9 +19,10 @@ import (
 )
 
 const (
-	endpoint       = "https://api.radarrelay.com/0x/v0"
-	mediaType      = "application/json"
-	userAgent      = "github.com/t0mk/rrgo"
+	endpoint  = "https://api.radarrelay.com/0x/v0"
+	mediaType = "application/json"
+	userAgent = "github.com/t0mk/rrgo"
+
 	debugEnvVar    = "RRGO_DEBUG"
 	endpointEnvVar = "RRGO_URL"
 
@@ -167,6 +169,13 @@ func (c *Client) Orders(oo OrdersOpts) ([]APIOrder, *Response, error) {
 		return nil, resp, err
 	}
 
+	for i := range orders {
+		err = orders[i].Process()
+		if err != nil {
+			return nil, resp, err
+		}
+	}
+
 	return orders, resp, nil
 
 }
@@ -189,6 +198,18 @@ func (c *Client) Orderbook(oo OrderbookOpts) (*Orderbook, *Response, error) {
 	resp, err := c.Do("GET", murl, nil, &ob)
 	if err != nil {
 		return nil, resp, err
+	}
+	for i := range ob.Asks {
+		err = ob.Asks[i].Process()
+		if err != nil {
+			return nil, resp, err
+		}
+	}
+	for i := range ob.Bids {
+		err = ob.Bids[i].Process()
+		if err != nil {
+			return nil, resp, err
+		}
 	}
 
 	return &ob, resp, nil

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 	"net/http"
 	"reflect"
@@ -350,6 +351,9 @@ type APIOrder struct {
 	Signature                 APISignature `json:"ecSignature"`
 	TakerTokenAmountFilled    string       `json:"-"`
 	TakerTokenAmountCancelled string       `json:"-"`
+	Price                     float64
+	Volume                    *big.Int
+	Pair                      string
 }
 
 func (order *Order) UnmarshalJSON(b []byte) error {
@@ -431,19 +435,64 @@ func (order *Order) Bytes() [441]byte {
 	return output
 }
 
-func (o APIOrder) String() string {
-	mat, ok := A2T[o.MakerToken]
-	if !ok {
-		log.Println(o.MakerToken, "is unknown token")
+func (a *APIOrder) Process() error {
+	int1 := new(big.Int)
+	_, err := fmt.Sscan(a.MakerTokenAmount, int1)
+	if err != nil {
+		return err
 	}
-	tat, ok := A2T[o.TakerToken]
-	if !ok {
-		log.Println(o.TakerToken, "is unknown token")
+	int2 := new(big.Int)
+	_, err = fmt.Sscan(a.TakerTokenAmount, int2)
+	if err != nil {
+		return err
 	}
-	mto := o.MakerTokenAmount
-	tto := o.TakerTokenAmount
 
-	return fmt.Sprintf("%s %s -> %s %s", mto, mat, tto, tat)
+	tMaker := A2T[a.MakerToken]
+	tTaker := A2T[a.TakerToken]
+
+	var numer, denom *big.Int
+	switch {
+	case tMaker == "DAI" && tTaker == "WETH":
+		numer, denom = int2, int1
+	case tMaker == "WETH" && tTaker == "DAI":
+		numer, denom = int1, int2
+	case tMaker == "DAI" || tMaker == "WETH":
+		numer, denom = int1, int2
+	case tTaker == "DAI" || tTaker == "WETH":
+		numer, denom = int2, int1
+	default:
+		numer, denom = int1, int2
+	}
+
+	bigPrice := new(big.Rat).SetFrac(numer, denom)
+	f, _ := bigPrice.Float64()
+	if math.IsInf(f, 1.) {
+		return errors.New("the unit price is too high for float64")
+	}
+	a.Price = f
+	a.Volume = int1
+	a.Pair = fmt.Sprintf("M:%s, T:%s", tMaker, tTaker)
+
+	return nil
+
+}
+
+func (o APIOrder) String() string {
+	return fmt.Sprintf("%s: %.8f %s", o.Pair, o.Price, o.Volume.String())
+	/*
+		mat, ok := A2T[o.MakerToken]
+		if !ok {
+			log.Println(o.MakerToken, "is unknown token addr")
+		}
+		tat, ok := A2T[o.TakerToken]
+		if !ok {
+			log.Println(o.TakerToken, "is unknown token addr")
+		}
+		mto := o.MakerTokenAmount
+		tto := o.TakerTokenAmount
+
+		return fmt.Sprintf("%s %s -> %s %s", mto, mat, tto, tat)
+	*/
 }
 
 func (order *Order) FromBytes(data [441]byte) {
