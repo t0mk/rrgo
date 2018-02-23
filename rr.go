@@ -184,7 +184,7 @@ func (c *Client) Orders(oo OrdersOpts) ([]APIOrder, *Response, error) {
 }
 
 func (ob *Orderbook) String() string {
-	r := "\nAsks:"
+	r := "\nAsks:\n"
 	for i := len(ob.Asks) - 1; i >= 0; i = i - 1 {
 		o := ob.Asks[i]
 		bo, _ := o.Process("Ask")
@@ -196,6 +196,16 @@ func (ob *Orderbook) String() string {
 		r += fmt.Sprintf("%s\n", bo)
 	}
 	return r
+
+}
+
+func (ob *Orderbook) Reverse() {
+	for i, j := 0, len(ob.Asks)-1; i < j; i, j = i+1, j-1 {
+		ob.Asks[i], ob.Asks[j] = ob.Asks[j], ob.Asks[i]
+	}
+	for i, j := 0, len(ob.Bids)-1; i < j; i, j = i+1, j-1 {
+		ob.Bids[i], ob.Bids[j] = ob.Bids[j], ob.Bids[i]
+	}
 
 }
 
@@ -218,27 +228,7 @@ func (c *Client) Orderbook(oo OrderbookOpts) (*Orderbook, *Response, error) {
 	if err != nil {
 		return nil, resp, err
 	}
-	for i, j := 0, len(ob.Asks)-1; i < j; i, j = i+1, j-1 {
-		ob.Asks[i], ob.Asks[j] = ob.Asks[j], ob.Asks[i]
-	}
-	for i, j := 0, len(ob.Bids)-1; i < j; i, j = i+1, j-1 {
-		ob.Bids[i], ob.Bids[j] = ob.Bids[j], ob.Bids[i]
-	}
-
-	/*
-		for i := range ob.Asks {
-			err = ob.Asks[i].Process()
-			if err != nil {
-				return nil, resp, err
-			}
-		}
-		for i := range ob.Bids {
-			err = ob.Bids[i].Process()
-			if err != nil {
-				return nil, resp, err
-			}
-		}
-	*/
-
+	// Order of Asks and Bids is wrong (reversed)
+	ob.Reverse()
 	return &ob, resp, nil
 }

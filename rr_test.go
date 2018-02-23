@@ -100,7 +100,7 @@ func TestOrderbook(t *testing.T) {
 func TestWSOrderbook(t *testing.T) {
 	bt := "ZRX"
 	qt := "WETH"
-	wso, err := NewWSOrderbook(T2A[bt], T2A[qt], 20)
+	wso, err := NewWSOrderbook(T2A[bt], T2A[qt], snapshotLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
