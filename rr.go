@@ -169,14 +169,33 @@ func (c *Client) Orders(oo OrdersOpts) ([]APIOrder, *Response, error) {
 		return nil, resp, err
 	}
 
-	for i := range orders {
-		err = orders[i].Process()
-		if err != nil {
-			return nil, resp, err
+	/*
+
+		for i := range orders {
+			bo, err = orders[i].Process("Ask")
+			if err != nil {
+				return nil, resp, err
+			}
 		}
-	}
+	*/
 
 	return orders, resp, nil
+
+}
+
+func (ob *Orderbook) String() string {
+	r := "\nAsks:"
+	for i := len(ob.Asks) - 1; i >= 0; i = i - 1 {
+		o := ob.Asks[i]
+		bo, _ := o.Process("Ask")
+		r += fmt.Sprintf("%s\n", bo)
+	}
+	r += "Bids:\n"
+	for _, o := range ob.Bids {
+		bo, _ := o.Process("Bid")
+		r += fmt.Sprintf("%s\n", bo)
+	}
+	return r
 
 }
 
@@ -199,18 +218,27 @@ func (c *Client) Orderbook(oo OrderbookOpts) (*Orderbook, *Response, error) {
 	if err != nil {
 		return nil, resp, err
 	}
-	for i := range ob.Asks {
-		err = ob.Asks[i].Process()
-		if err != nil {
-			return nil, resp, err
-		}
+	for i, j := 0, len(ob.Asks)-1; i < j; i, j = i+1, j-1 {
+		ob.Asks[i], ob.Asks[j] = ob.Asks[j], ob.Asks[i]
 	}
-	for i := range ob.Bids {
-		err = ob.Bids[i].Process()
-		if err != nil {
-			return nil, resp, err
-		}
+	for i, j := 0, len(ob.Bids)-1; i < j; i, j = i+1, j-1 {
+		ob.Bids[i], ob.Bids[j] = ob.Bids[j], ob.Bids[i]
 	}
+
+	/*
+		for i := range ob.Asks {
+			err = ob.Asks[i].Process()
+			if err != nil {
+				return nil, resp, err
+			}
+		}
+		for i := range ob.Bids {
+			err = ob.Bids[i].Process()
+			if err != nil {
+				return nil, resp, err
+			}
+		}
+	*/
 
 	return &ob, resp, nil
 }

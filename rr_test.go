@@ -52,28 +52,57 @@ func TestAddressImport(t *testing.T) {
 
 func TestOrderbook(t *testing.T) {
 	c := NewClient()
-	bt := "WETH"
-	tt := "ZRX"
+	bt := "ZRX"
+	qt := "WETH"
+	lim := 10
 	ob, _, err := c.Orderbook(OrderbookOpts{
 		BaseTokenAddress:  T2A[bt],
-		QuoteTokenAddress: T2A[tt],
+		QuoteTokenAddress: T2A[qt],
 	},
 	)
 
-	log.Printf("Book for %s/%s, i.e. Base: %s, Quote: %s\n",
-		tt, bt, bt, tt)
+	log.Printf("Book for %s/%s", bt, qt)
+	log.Println("Base", bt, T2A[bt])
+	log.Println("Quot", qt, T2A[qt])
 
 	if err != nil {
 		t.Fatal(err)
 	}
 	la := len(ob.Asks)
-	log.Println("Asks", la)
-	for _, o := range ob.Asks[0:10] {
-		log.Println(&o)
+	lima := lim
+	if la < lima {
+		lima = la
+	}
+	log.Println(lima)
+	for i := lima - 1; i >= 0; i = i - 1 {
+		o := ob.Asks[i]
+		bo, err := o.Process("Ask")
+		if err != nil {
+			t.Fatal(err)
+		}
+		log.Println(bo)
 	}
 	lb := len(ob.Bids)
-	log.Println("Bids", lb)
-	for _, o := range ob.Bids[0:10] {
-		log.Println(&o)
+	limb := lim
+	if lb < limb {
+		limb = lb
 	}
+	log.Println("Bids", lb)
+	for _, o := range ob.Bids[0:limb] {
+		bo, err := o.Process("Bid")
+		if err != nil {
+			t.Fatal(err)
+		}
+		log.Println(bo)
+	}
+}
+
+func TestWSOrderbook(t *testing.T) {
+	bt := "ZRX"
+	qt := "WETH"
+	wso, err := NewWSOrderbook(T2A[bt], T2A[qt], 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wso.Run()
 }

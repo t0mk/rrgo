@@ -435,64 +435,114 @@ func (order *Order) Bytes() [441]byte {
 	return output
 }
 
-func (a *APIOrder) Process() error {
-	int1 := new(big.Int)
-	_, err := fmt.Sscan(a.MakerTokenAmount, int1)
-	if err != nil {
-		return err
-	}
-	int2 := new(big.Int)
-	_, err = fmt.Sscan(a.TakerTokenAmount, int2)
-	if err != nil {
-		return err
-	}
+type BookOrder struct {
+	// Bid/Ask
+	Type       string
+	Pair       string
+	Price      float64
+	Volume     float64
+	MakerToken string
+	TakerToken string
+}
 
-	tMaker := A2T[a.MakerToken]
-	tTaker := A2T[a.TakerToken]
+func (o *BookOrder) String() string {
+	return fmt.Sprintf("%s\t%f\t%f", o.Pair, o.Price, o.Volume)
+}
 
-	var numer, denom *big.Int
-	switch {
-	case tMaker == "DAI" && tTaker == "WETH":
-		numer, denom = int2, int1
-	case tMaker == "WETH" && tTaker == "DAI":
-		numer, denom = int1, int2
-	case tMaker == "DAI" || tMaker == "WETH":
-		numer, denom = int1, int2
-	case tTaker == "DAI" || tTaker == "WETH":
-		numer, denom = int2, int1
-	default:
-		numer, denom = int1, int2
+func strToFloat(s string, o int) (float64, error) {
+	fmtStr := fmt.Sprintf("%%0%ds", o)
+	s = fmt.Sprintf(fmtStr, s)
+	l := len(s)
+	a := s[0:l-o] + "." + s[l-o:]
+	f, err := strconv.ParseFloat(a, 64)
+	if err != nil {
+		return 0.0, err
+	}
+	return f, nil
+}
+
+func (a *APIOrder) Process(bidask string) (*BookOrder, error) {
+	if bidask != "Bid" && bidask != "Ask" {
+		return nil, fmt.Errorf("%s is invalid, must be Bid or Ask", bidask)
+	}
+	bo := BookOrder{
+		Type:       bidask,
+		MakerToken: A2T[a.MakerToken],
+		TakerToken: A2T[a.TakerToken],
+	}
+	amountMaker := new(big.Int)
+	_, err := fmt.Sscan(a.MakerTokenAmount, amountMaker)
+	if err != nil {
+		return nil, err
+	}
+	amountTaker := new(big.Int)
+	_, err = fmt.Sscan(a.TakerTokenAmount, amountTaker)
+	if err != nil {
+		return nil, err
+	}
+	numer, denom := amountMaker, amountTaker
+	bo.Pair = fmt.Sprintf("%s/%s", bo.TakerToken, bo.MakerToken)
+	volStr := a.MakerTokenAmount
+	if bidask == "Ask" {
+		numer, denom = amountTaker, amountMaker
+		bo.Pair = fmt.Sprintf("%s/%s", bo.MakerToken, bo.TakerToken)
+		volStr = a.TakerTokenAmount
 	}
 
 	bigPrice := new(big.Rat).SetFrac(numer, denom)
 	f, _ := bigPrice.Float64()
 	if math.IsInf(f, 1.) {
-		return errors.New("the unit price is too high for float64")
+		return nil, errors.New("the unit price is too high for float64")
 	}
-	a.Price = f
-	a.Volume = int1
-	a.Pair = fmt.Sprintf("M:%s, T:%s", tMaker, tTaker)
+	bo.Price = f
+	bo.Volume, err = strToFloat(volStr, 15)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil
+	/*
+		int1 := new(big.Int)
+		_, err := fmt.Sscan(a.MakerTokenAmount, int1)
+		if err != nil {
+			return err
+		}
+		int2 := new(big.Int)
+		_, err = fmt.Sscan(a.TakerTokenAmount, int2)
+		if err != nil {
+			return err
+		}
+
+
+		var numer, denom *big.Int
+		switch {
+		case tMaker == "DAI" && tTaker == "WETH":
+			numer, denom = int2, int1
+		case tMaker == "WETH" && tTaker == "DAI":
+			numer, denom = int1, int2
+		case tMaker == "DAI" || tMaker == "WETH":
+			numer, denom = int1, int2
+		case tTaker == "DAI" || tTaker == "WETH":
+			numer, denom = int2, int1
+		default:
+			numer, denom = int1, int2
+		}
+
+		bigPrice := new(big.Rat).SetFrac(numer, denom)
+		f, _ := bigPrice.Float64()
+		if math.IsInf(f, 1.) {
+			return errors.New("the unit price is too high for float64")
+		}
+		a.Price = f
+		a.Volume = int1
+		a.Pair = fmt.Sprintf("M:%s, T:%s", tMaker, tTaker)
+	*/
+
+	return &bo, nil
 
 }
 
 func (o APIOrder) String() string {
 	return fmt.Sprintf("%s: %.8f %s", o.Pair, o.Price, o.Volume.String())
-	/*
-		mat, ok := A2T[o.MakerToken]
-		if !ok {
-			log.Println(o.MakerToken, "is unknown token addr")
-		}
-		tat, ok := A2T[o.TakerToken]
-		if !ok {
-			log.Println(o.TakerToken, "is unknown token addr")
-		}
-		mto := o.MakerTokenAmount
-		tto := o.TakerTokenAmount
-
-		return fmt.Sprintf("%s %s -> %s %s", mto, mat, tto, tat)
-	*/
 }
 
 func (order *Order) FromBytes(data [441]byte) {
