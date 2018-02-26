@@ -134,6 +134,11 @@ type UpdateMessage struct {
 	Payload *APIOrder `json:"payload"`
 }
 
+type OfTheDayMessage struct {
+	MOTD          string   `json:"motd"`
+	Announcements []string `json:"announcements"`
+}
+
 func (wso *WSOrderbook) Run() {
 
 	for {
@@ -183,7 +188,18 @@ func (wso *WSOrderbook) Run() {
 			s, _ := um.Payload.Process(bidAsk)
 			log.Printf("New %s: %s\n", bidAsk, s)
 		default:
-			log.Println("ERROR WS GARBAGE", string(msg))
+			motd := OfTheDayMessage{Announcements: []string{}}
+			err := json.Unmarshal(msg, &motd)
+			if err != nil {
+				log.Println("ERROR WS receivedi garbage", string(msg))
+			} else {
+				log.Println("MOTD:", motd.MOTD)
+				if len(motd.Announcements) > 0 {
+					for _, a := range motd.Announcements {
+						log.Println("*", a)
+					}
+				}
+			}
 		}
 
 	}

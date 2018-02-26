@@ -2,6 +2,8 @@ package rrgo
 
 import (
 	"log"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -98,8 +100,18 @@ func TestOrderbook(t *testing.T) {
 }
 
 func TestWSOrderbook(t *testing.T) {
-	bt := "ZRX"
-	qt := "WETH"
+	testPairEnvvar := "RRGO_TEST_PAIR"
+	p := os.Getenv(testPairEnvvar)
+	if len(p) == 0 {
+		t.Fatalf("set %s", testPairEnvvar)
+	}
+	ts := strings.Split(p, "/")
+	if len(ts) != 2 {
+		t.Fatalf("%s must be in format <BaseToken>/<QuoteToken>", testPairEnvvar)
+	}
+
+	bt := ts[0]
+	qt := ts[1]
 	wso, err := NewWSOrderbook(T2A[bt], T2A[qt], snapshotLimit)
 	if err != nil {
 		t.Fatal(err)
