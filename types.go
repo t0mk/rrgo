@@ -482,11 +482,11 @@ func (a *APIOrder) Process(bidask string) (*BookOrder, error) {
 	}
 	numer, denom := amountMaker, amountTaker
 	bo.Pair = fmt.Sprintf("%s/%s", bo.TakerToken, bo.MakerToken)
-	volStr := a.MakerTokenAmount
+	volStr := a.TakerTokenAmount
 	if bidask == "Ask" {
 		numer, denom = amountTaker, amountMaker
 		bo.Pair = fmt.Sprintf("%s/%s", bo.MakerToken, bo.TakerToken)
-		volStr = a.TakerTokenAmount
+		volStr = a.MakerTokenAmount
 	}
 
 	bigPrice := new(big.Rat).SetFrac(numer, denom)
@@ -495,47 +495,10 @@ func (a *APIOrder) Process(bidask string) (*BookOrder, error) {
 		return nil, errors.New("the unit price is too high for float64")
 	}
 	bo.Price = f
-	bo.Volume, err = strToFloat(volStr, 15)
+	bo.Volume, err = strToFloat(volStr, 18)
 	if err != nil {
 		return nil, err
 	}
-
-	/*
-		int1 := new(big.Int)
-		_, err := fmt.Sscan(a.MakerTokenAmount, int1)
-		if err != nil {
-			return err
-		}
-		int2 := new(big.Int)
-		_, err = fmt.Sscan(a.TakerTokenAmount, int2)
-		if err != nil {
-			return err
-		}
-
-
-		var numer, denom *big.Int
-		switch {
-		case tMaker == "DAI" && tTaker == "WETH":
-			numer, denom = int2, int1
-		case tMaker == "WETH" && tTaker == "DAI":
-			numer, denom = int1, int2
-		case tMaker == "DAI" || tMaker == "WETH":
-			numer, denom = int1, int2
-		case tTaker == "DAI" || tTaker == "WETH":
-			numer, denom = int2, int1
-		default:
-			numer, denom = int1, int2
-		}
-
-		bigPrice := new(big.Rat).SetFrac(numer, denom)
-		f, _ := bigPrice.Float64()
-		if math.IsInf(f, 1.) {
-			return errors.New("the unit price is too high for float64")
-		}
-		a.Price = f
-		a.Volume = int1
-		a.Pair = fmt.Sprintf("M:%s, T:%s", tMaker, tTaker)
-	*/
 
 	return &bo, nil
 

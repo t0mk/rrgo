@@ -61,7 +61,7 @@ func (wso *WSOrderbook) Subscribe(limit int) error {
 		return err
 	}
 	rand.Seed(time.Now().UnixNano())
-	rID := rand.Int()
+	rID := rand.Int() % 5096
 
 	sm := SubscribeMessage{
 		MessageFields: MessageFields{
